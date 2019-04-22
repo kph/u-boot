@@ -785,6 +785,7 @@ int qspi_xfer(struct fsl_qspi_priv *priv, unsigned int bitlen,
 		if (flags == SPI_XFER_END) {
 			priv->sf_addr = wr_sfaddr;
 			qspi_op_write(priv, (u8 *)dout, bytes);
+			//mdelay(1);
 			return 0;
 		}
 
@@ -836,7 +837,7 @@ int qspi_xfer(struct fsl_qspi_priv *priv, unsigned int bitlen,
 	    (priv->cur_seqid == QSPI_CMD_BRWR))
 		qspi_ahb_invalid(priv);
 #endif
-
+	udelay(250);
 	return 0;
 }
 
