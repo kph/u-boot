@@ -41,6 +41,8 @@
   "load_fdt_sf=sf read ${fdt_high} 0x00080000 ${sz_fdt}\0" \
   "load_initramfs_sf=sf read ${initrd_high} 0x00300000 ${sz_initrd}\0" \
   "load_kernel_sf=sf read ${loadaddr} 0x00100000 ${sz_kernel}\0" \
+  "mtdids=" CONFIG_MTDIDS_DEFAULT "\0" \
+  "mtdparts=" CONFIG_MTDPARTS_DEFAULT "\0" \
   "net_read_itb=${netbootmethod} ${loadaddr} ${serverpath}platina-mk1-bmc-itb.bin\0" \
   "netboot=run readmac net_read_itb bootlinux_itb\0" \
   "netbootmethod=dhcp\0" \
