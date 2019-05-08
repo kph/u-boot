@@ -508,35 +508,11 @@ uint mmc_get_env_part(struct mmc *mmc)
 
 int board_postclk_init(void)
 {
-	int	ret;
-#ifdef CONFIG_DM_SPI_FLASH
-	struct udevice *new;
-
-	/* speed and mode will be read from DT */
-	ret = spi_flash_probe_bus_cs(CONFIG_SF_DEFAULT_BUS,
-				     CONFIG_SF_DEFAULT_CS,
-				     CONFIG_SF_DEFAULT_SPEED,
-				     CONFIG_SF_DEFAULT_MODE,
-				     &new);
-	if (ret) {
-	}
-
-	spi_flash_mtd_register(dev_get_uclass_priv(new));
-#else
-	struct spi_flash *flash;
-	
-	flash = spi_flash_probe(CONFIG_SF_DEFAULT_BUS,
-				CONFIG_SF_DEFAULT_CS,
-				CONFIG_SF_DEFAULT_SPEED,
-				CONFIG_SF_DEFAULT_MODE);
-	if (spi_flash) {
-	  ret = spi_flash_mtd_register(flash);
-	}
-#endif
-
 	/* NO LDO SOC on i.MX6SLL */
-	if (!is_mx6sll())
-	  set_ldo_voltage(LDO_SOC, 1175);	/* Set VDDSOC to 1.175V */
+	if (is_mx6sll())
+		return 0;
+
+	set_ldo_voltage(LDO_SOC, 1175);	/* Set VDDSOC to 1.175V */
 
 	return 0;
 }
