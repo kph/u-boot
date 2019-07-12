@@ -13,9 +13,45 @@
 #include <memalign.h>
 #include <search.h>
 #include <ubi_uboot.h>
+#include <spi.h>
 #undef crc32
 
 DECLARE_GLOBAL_DATA_PTR;
+
+static struct spi_flash *env_flash;
+
+static int setup_flash_device(void)
+{
+#ifdef CONFIG_DM_SPI_FLASH
+	struct udevice *new;
+	int	ret;
+
+	/* speed and mode will be read from DT */
+	ret = spi_flash_probe_bus_cs(CONFIG_SF_DEFAULT_BUS,
+				     CONFIG_SF_DEFAULT_CS,
+				     CONFIG_SF_DEFAULT_SPEED,
+				     CONFIG_SF_DEFAULT_MODE,
+				     &new);
+	if (ret) {
+		set_default_env("spi_flash_probe_bus_cs() failed", 0);
+		return ret;
+	}
+
+	env_flash = dev_get_uclass_priv(new);
+#else
+
+	if (!env_flash) {
+		env_flash = spi_flash_probe(CONFIG_SF_DEFAULT_BUS,
+			CONFIG_SF_DEFAULT_CS,
+			CONFIG_SF_DEFAULT_SPEED, CONFIG_SF_DEFAULT_MODE);
+		if (!env_flash) {
+			set_default_env("spi_flash_probe() failed", 0);
+			return -EIO;
+		}
+	}
+#endif
+	return 0;
+}
 
 #ifdef CONFIG_CMD_SAVEENV
 #ifdef CONFIG_SYS_REDUNDAND_ENVIRONMENT
@@ -28,6 +64,11 @@ static int env_ubi_save(void)
 	if (ret)
 		return ret;
 
+	ret = setup_flash_device();
+	if (ret) {
+		return ret;
+	}
+	
 	if (ubi_part(CONFIG_ENV_UBI_PART, NULL)) {
 		printf("\n** Cannot find mtd partition \"%s\"\n",
 		       CONFIG_ENV_UBI_PART);
@@ -70,6 +111,11 @@ static int env_ubi_save(void)
 	if (ret)
 		return ret;
 
+	ret = setup_flash_device();
+	if (ret) {
+		return ret;
+	}
+	
 	if (ubi_part(CONFIG_ENV_UBI_PART, NULL)) {
 		printf("\n** Cannot find mtd partition \"%s\"\n",
 		       CONFIG_ENV_UBI_PART);
@@ -94,7 +140,7 @@ static int env_ubi_load(void)
 {
 	ALLOC_CACHE_ALIGN_BUFFER(char, env1_buf, CONFIG_ENV_SIZE);
 	ALLOC_CACHE_ALIGN_BUFFER(char, env2_buf, CONFIG_ENV_SIZE);
-	int read1_fail, read2_fail;
+	int read1_fail, read2_fail, ret;
 	env_t *tmp_env1, *tmp_env2;
 
 	/*
@@ -111,6 +157,11 @@ static int env_ubi_load(void)
 	tmp_env1 = (env_t *)env1_buf;
 	tmp_env2 = (env_t *)env2_buf;
 
+	ret = setup_flash_device();
+	if (ret) {
+		return ret;
+	}
+	
 	if (ubi_part(CONFIG_ENV_UBI_PART, NULL)) {
 		printf("\n** Cannot find mtd partition \"%s\"\n",
 		       CONFIG_ENV_UBI_PART);
@@ -134,9 +185,11 @@ static int env_ubi_load(void)
 							 read2_fail);
 }
 #else /* ! CONFIG_SYS_REDUNDAND_ENVIRONMENT */
+
 static int env_ubi_load(void)
 {
 	ALLOC_CACHE_ALIGN_BUFFER(char, buf, CONFIG_ENV_SIZE);
+	int ret;
 
 	/*
 	 * In case we have restarted u-boot there is a chance that buffer
@@ -148,6 +201,11 @@ static int env_ubi_load(void)
 	 */
 	memset(buf, 0x0, CONFIG_ENV_SIZE);
 
+	ret = setup_flash_device();
+	if (ret) {
+		return ret;
+	}
+	
 	if (ubi_part(CONFIG_ENV_UBI_PART, NULL)) {
 		printf("\n** Cannot find mtd partition \"%s\"\n",
 		       CONFIG_ENV_UBI_PART);
