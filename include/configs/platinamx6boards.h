@@ -28,18 +28,14 @@
 #define CONFIG_EXTRA_ENV_SETTINGS \
   "baudrate=115200\0" \
   "bootargs=console=ttymxc0,115200n8 ip=dhcp\0" \
-  "bootcmd=run readmac;run sf_read_itb bootlinux_itb;run sf_read_legacy bootlinux_legacy\0" \
+  "bootcmd=run readmac;run sf_read_itb bootlinux_itb;run ubi_read_itb bootlinux_itb\0" \
   "bootlinux_itb=bootm ${loadaddr}\0" \
-  "bootlinux_legacy=bootz ${loadaddr} ${initrd_high} ${fdt_high}\0" \
   "bootdelay=3\0" \
   "ethact=FEC\0" \
   "ethprime=FEC\0" \
   "fdt_high=0x88000000\0" \
   "initrd_high=0x89000000\0" \
   "loadaddr=0x82000000\0" \
-  "load_fdt_sf=sf read ${fdt_high} 0x00080000 ${sz_fdt}\0" \
-  "load_initramfs_sf=sf read ${initrd_high} 0x00300000 ${sz_initrd}\0" \
-  "load_kernel_sf=sf read ${loadaddr} 0x00100000 ${sz_kernel}\0" \
   "net_read_itb=${netbootmethod} ${loadaddr} ${serverpath}platina-mk1-bmc-itb.bin\0" \
   "netboot=run readmac net_read_itb bootlinux_itb\0" \
   "netbootmethod=dhcp\0" \
@@ -47,13 +43,10 @@
   "qspi1=mw 020e01b8 00000005; mw 20a8004 c7000000; mw 020a8000 c300ca05\0" \
   "readmac=i2c read 55 0.2 200 80800000; setmac 80800000 24; saveenv\0" \
   "sf_read_itb=sf probe 0;sf read ${loadaddr} 0x00100000 ${sz_itb}\0" \
-  "sf_read_legacy=sf probe 0;run load_kernel_sf load_initramfs_sf load_fdt_sf\0" \
+  "ubi_read_itb=ubi part ubi;ubifsmount ubi0:perm;ubifsload ${loadaddr} boot/platina-mk1-bmc-itb.bin\0" \
   "stderr=serial\0" \
   "stdin=serial\0" \
   "stdout=serial\0" \
-  "sz_fdt=f000\0" \
-  "sz_initrd=300000\0" \
-  "sz_kernel=200000\0" \
   "sz_itb=800000\0" \
   "wd=mw 020e01a0 00000005;mw 020e01a4 00000005;mw 020e01a8 00000005;mw 020e01b8 00000005;mw 020e01bc 00000005;mw 020a8000 0300ca05;mw 020a8004 07000000\0"
 
