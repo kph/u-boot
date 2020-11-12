@@ -1,3 +1,6 @@
+#define DEBUG
+#undef CONFIG_LOGLEVEL
+#define CONFIG_LOGLEVEL 8
 // SPDX-License-Identifier: GPL-2.0+
 /*
  * i2c driver for Freescale i.MX series
@@ -899,6 +902,8 @@ static int mxc_i2c_probe(struct udevice *bus)
 	fdt_addr_t addr;
 	int ret, ret2;
 
+	printf("Made it to %s\n", __func__);
+	return -EINVAL;
 	i2c_bus->driver_data = dev_get_driver_data(bus);
 
 	addr = dev_read_addr(bus);
