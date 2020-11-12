@@ -821,7 +821,17 @@ __weak int clear_bss(void)
 	return 0;
 }
 
+static int testpoint_putc(void)
+{
+	debug_uart_init();
+	printch('0');
+	printch('\n');
+
+	return 0;
+}
+
 static const init_fnc_t init_sequence_f[] = {
+	testpoint_putc,
 	setup_mon_len,
 #ifdef CONFIG_OF_CONTROL
 	fdtdec_setup,
