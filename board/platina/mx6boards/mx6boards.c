@@ -295,56 +295,6 @@ int board_qspi_init(void)
 }
 #endif
 
-int power_init_board(void)
-{
-#if 0
-	struct udevice *dev;
-	int ret;
-	u32 dev_id, rev_id, i=0;
-	u32 switch_num = 6;
-	u32 offset = PFUZE100_SW1CMODE;
-
-	while (!gpio_get_value(IMX_GPIO_NR(4, 15))) {
-		mdelay(10);
-		if (i++ > 1000)
-			break;
-	}
-	mdelay(50);
-
-	ret = pmic_get("pfuze100@08", &dev);
-	if (ret == -ENODEV)
-		return 0;
-
-	if (ret != 0)
-		return ret;
-
-	dev_id = pmic_reg_read(dev, PFUZE100_DEVICEID);
-	rev_id = pmic_reg_read(dev, PFUZE100_REVID);
-	printf("PMIC: PFUZE100! DEV_ID=0x%x REV_ID=0x%x\n", dev_id, rev_id);
-
-	/* Init mode to APS_PFM */
-	pmic_reg_write(dev, PFUZE100_SW1ABMODE, APS_PFM);
-
-	for (i = 0; i < switch_num - 1; i++)
-		pmic_reg_write(dev, offset + i * SWITCH_SIZE, APS_PFM);
-
-	/* set SW1AB staby volatage 0.975V */
-	pmic_clrsetbits(dev, PFUZE100_SW1ABSTBY, 0x3f, 0x1b);
-
-	/* set SW1AB/VDDARM step ramp up time from 16us to 4us/25mV */
-	pmic_clrsetbits(dev, PFUZE100_SW1ABCONF, 0xc0, 0x40);
-
-	/* set SW1C staby volatage 1.1V */
-	pmic_clrsetbits(dev, PFUZE100_SW1CSTBY, 0x3f, 0x20);
-
-	/* set SW1C/VDDSOC step ramp up time to from 16us to 4us/25mV */
-	pmic_clrsetbits(dev, PFUZE100_SW1CCONF, 0xc0, 0x40);
-
-	pmic_clrsetbits(dev, PFUZE100_VGEN5VOL, LDO_VOL_MASK, 1 << LDO_EN);
-#endif
-	return 0;
-}
-
 int board_init(void)
 {
 	debug_uart_init();
@@ -382,8 +332,6 @@ int board_init(void)
 	setup_fec();
 	udelay(500);
 	
-	SETUP_IOMUX_PADS(usdhc4_pads);
-
 	return 0;
 }
 

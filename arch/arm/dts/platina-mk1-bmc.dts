@@ -436,6 +436,69 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_i2c1>;
 	status = "okay";
+
+	eeprom: at24@55 {
+		compatible = "at24,24c128";
+		pagesize = <32>;
+		reg = <0x55>;
+
+		onie_data: data@0 {
+			  reg = <0x0 0x800>;
+		};
+	};
+
+	mux: i2cmux@78 {
+		compatible = "nxp,pca9548";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0x76>;
+
+		i2c@0 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0>;
+
+			sensor0: ucd9090@34 {
+				compatible = "ti,ucd9090";
+				reg = <0x34>; // 7e on alpha harware
+			};
+		};
+
+		i2c@1 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <1>;
+
+			ledgpio: pca9535@75 {
+				compatible = "nxp,pca9535";
+				reg = <0x75>; // 22 on alpha hardware
+				reset-gpios = <&gpio6 6 GPIO_ACTIVE_LOW>;
+			};
+		};
+
+		i2c@2 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <2>;
+
+			hwid: pca9535@27 {
+				compatible = "nxp,pca9535";
+				reg = <0x27>;
+			};
+		};
+
+		i2c@7 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <7>;
+
+			fanctrl: w83795@2f {
+				compatible = "nuvoton,w83795g";
+				reg = <0x2f>;
+			};
+		};
+	};
+
 	pmic: pfuze100@08 {
 		compatible = "fsl,pfuze100";
 		reg = <0x08>;
