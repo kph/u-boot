@@ -297,8 +297,6 @@ int board_qspi_init(void)
 
 int board_init(void)
 {
-	debug_uart_init();
-	printch('1');
 	/* Address of boot parameters */
 	gd->bd->bi_boot_params = PHYS_SDRAM + 0x100;
 
