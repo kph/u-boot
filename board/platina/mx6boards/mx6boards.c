@@ -17,8 +17,8 @@
 #include <asm/io.h>
 #include <linux/sizes.h>
 #include <common.h>
-#include <fsl_esdhc.h>
 #include <mmc.h>
+#include <fsl_esdhc_imx.h>
 #include <asm/mach-imx/mxc_i2c.h>
 #include <i2c.h>
 #include <miiphy.h>
@@ -36,11 +36,6 @@ DECLARE_GLOBAL_DATA_PTR;
 #define USDHC_PAD_CTRL (PAD_CTL_PKE | PAD_CTL_PUE |		\
 	PAD_CTL_PUS_22K_UP  | PAD_CTL_SPEED_LOW |		\
 	PAD_CTL_DSE_80ohm   | PAD_CTL_SRE_FAST  | PAD_CTL_HYS)
-
-#define I2C_PAD_CTRL    (PAD_CTL_PKE | PAD_CTL_PUE |            \
-	PAD_CTL_PUS_100K_UP | PAD_CTL_SPEED_MED |               \
-	PAD_CTL_DSE_40ohm | PAD_CTL_HYS |			\
-	PAD_CTL_ODE)
 
 #define ENET_PAD_CTRL  (PAD_CTL_PUS_100K_UP | PAD_CTL_PUE |     \
 	PAD_CTL_SPEED_HIGH   |                                   \
@@ -156,18 +151,13 @@ static struct i2c_pads_info i2c_pad_info2 = {
 	},
 };
 
-#ifdef CONFIG_I2C_PMIC_0
-#define I2C_PMIC        0
-#else
-#define I2C_PMIC	1
-#endif
-
 int power_init_board(void)
 {
-	struct pmic *p;
-	unsigned int reg;
+	struct udevice *dev;
 	int ret;
-	int i = 0;
+	u32 dev_id, rev_id, i=0;
+	u32 switch_num = 6;
+	u32 offset = PFUZE100_SW1CMODE;
 
 
 	/* 12/02/2016	*/
@@ -180,23 +170,41 @@ int power_init_board(void)
 	}
 	mdelay(50);
 		
+	ret = pmic_get("pfuze100@8", &dev);
+	if (ret == -ENODEV)
+		return 0;
 
-	p = pfuze_common_init(I2C_PMIC);
-	if (!p)
-		return -ENODEV;
-
-	ret = pfuze_mode_init(p, APS_PFM);
-	if (ret < 0)
+	if (ret != 0)
 		return ret;
 
+	dev_id = pmic_reg_read(dev, PFUZE100_DEVICEID);
+	rev_id = pmic_reg_read(dev, PFUZE100_REVID);
+	printf("PMIC: PFUZE100! DEV_ID=0x%x REV_ID=0x%x\n", dev_id, rev_id);
+
+	/* Init mode to APS_PFM */
+	pmic_reg_write(dev, PFUZE100_SW1ABMODE, APS_PFM);
+
+	for (i = 0; i < switch_num - 1; i++)
+		pmic_reg_write(dev, offset + i * SWITCH_SIZE, APS_PFM);
+
+	/* set SW1AB staby volatage 0.975V */
+	pmic_clrsetbits(dev, PFUZE100_SW1ABSTBY, 0x3f, 0x1b);
+
+	/* set SW1AB/VDDARM step ramp up time from 16us to 4us/25mV */
+	pmic_clrsetbits(dev, PFUZE100_SW1ABCONF, 0xc0, 0x40);
+
+	/* set SW1C staby volatage 1.10V */
+	pmic_clrsetbits(dev, PFUZE100_SW1CSTBY, 0x3f, 0x20);
+
+	/* set SW1C/VDDSOC step ramp up time to from 16us to 4us/25mV */
+	pmic_clrsetbits(dev, PFUZE100_SW1CCONF, 0xc0, 0x40);
+
 	/* Enable power of VGEN5 3V3, needed for SD3 */
-	pmic_reg_read(p, PFUZE100_VGEN5VOL, &reg);
-	reg &= ~LDO_VOL_MASK;
-	reg |= (LDOB_3_30V | (1 << LDO_EN));
-	pmic_reg_write(p, PFUZE100_VGEN5VOL, reg);
+	pmic_clrsetbits(dev, PFUZE100_VGEN5VOL, LDO_VOL_MASK, LDOB_3_30V |
+			( 1 << LDO_EN));
 
 	/* Enable VCOIN and set it to 2.90V */
-        pmic_reg_write(p, 0x1A, 0x0B);
+        pmic_reg_write(dev, 0x1A, 0x0B);
 
 	return 0;
 }
@@ -261,46 +269,16 @@ static struct fsl_esdhc_cfg usdhc_cfg[1] = {
 
 int board_mmc_getcd(struct mmc *mmc)
 {
-	struct fsl_esdhc_cfg *cfg = (struct fsl_esdhc_cfg *)mmc->priv;
-	int ret = 0;
-
-	switch (cfg->esdhc_base) {
-	case USDHC4_BASE_ADDR:
-		ret = 1; // Assume always present.
-		break;
-	}
-
-	return ret;
+	return 1;
 }
 
 int board_mmc_init(struct bd_info *bis)
 {
-	int i;
-#ifdef CONFIG_FSL_ESDHC
-	int ret;
-#endif /* CONFIG_FSL_ESDHC */
+	imx_iomux_v3_setup_multiple_pads(
+			usdhc4_pads, ARRAY_SIZE(usdhc4_pads));
 
-	for (i = 0; i < CONFIG_SYS_FSL_USDHC_NUM; i++) {
-		switch (i) {
-		case 0:
-			imx_iomux_v3_setup_multiple_pads(
-				usdhc4_pads, ARRAY_SIZE(usdhc4_pads));
-			usdhc_cfg[0].sdhc_clk = mxc_get_clock(MXC_ESDHC4_CLK);
-			break;
-		default:
-			printf("Warning: you configured more USDHC controllers"
-				"(%d) than supported by the board\n", i + 1);
-			return -EINVAL;
-		}
-#ifdef CONFIG_FSL_ESDHC
-		ret = fsl_esdhc_initialize(bis, &usdhc_cfg[i]);
-		if (ret) {
-			printf("Warning: failed to initialize mmc dev %d\n", i);
-			return ret;
-		}
-#endif
-	}
-	return 0;
+	usdhc_cfg[0].sdhc_clk = mxc_get_clock(MXC_ESDHC4_CLK);
+	return fsl_esdhc_initialize(bis, &usdhc_cfg[0]);
 }
 
 #ifdef CONFIG_FSL_QSPI
@@ -355,9 +333,7 @@ int board_init(void)
 	gpio_request(IMX_GPIO_NR(4,15), "all_pwr_good");
 	gpio_direction_input(IMX_GPIO_NR(4,15)); /* ALL_PWR_GOOD */
 
-
-#ifdef CONFIG_SYS_I2C_MXC
-	/* i2c Bus 1 initiazation */
+	/* i2c Bus 1 initialization */
 	setup_i2c(0, CONFIG_SYS_I2C_SPEED, 0x7f, &i2c_pad_info1);
 
 	/* i2c Bus 2 initialization */
@@ -366,7 +342,6 @@ int board_init(void)
 	/* MAIN_I2C_MUX_RST_L = 1 */
 	gpio_request(IMX_GPIO_NR(6,8), "main_i2c_mux_rst_l");
 	gpio_direction_output(IMX_GPIO_NR(6,8), 1); 
-#endif
 
 #ifdef CONFIG_FSL_QSPI
 	board_qspi_init();
