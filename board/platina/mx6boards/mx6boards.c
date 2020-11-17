@@ -198,7 +198,7 @@ int power_init_board(void)
 	}
 	mdelay(50);
 		
-	ret = pmic_get("pfuze100", &dev);
+	ret = pmic_get("pfuze100@8", &dev);
 	if (ret == -ENODEV)
 		return 0;
 
